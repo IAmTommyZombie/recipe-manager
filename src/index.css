@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+:root {
+  --paprika-cream: #f4d6c6; /* Your desired cream color */
+  --paprika-orange: #f28c38; /* Your desired orange color */
+}
