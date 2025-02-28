@@ -1,100 +1,173 @@
-// src/components/RecipeList.jsx
-import React, { useState } from "react";
+import { useState } from "react";
 
-const RecipeList = ({ recipes, onSelect }) => {
-  const [filterCategory, setFilterCategory] = useState("All");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState("list"); // "list" or "grid"
+const RecipeList = ({ recipes, onEditRecipe, onDeleteRecipe }) => {
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({
+    title: "",
+    category: "",
+    ingredients: [],
+    instructions: [],
+    nutrition: {},
+  });
 
-  const filteredRecipes = recipes
-    .filter(
-      (recipe) => filterCategory === "All" || recipe.category === filterCategory
-    )
-    .filter(
-      (recipe) =>
-        recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        recipe.ingredients.some((ing) =>
-          ing.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-    );
+  const startEditing = (recipe) => {
+    setEditingId(recipe.id);
+    setEditForm({
+      title: recipe.title,
+      category: recipe.category,
+      ingredients: recipe.ingredients.join("\n"),
+      instructions: recipe.instructions.join("\n"),
+      nutrition: Object.entries(recipe.nutrition)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join("\n"),
+    });
+  };
+
+  const handleEditSubmit = (e, id) => {
+    e.preventDefault();
+    const nutritionObj = editForm.nutrition
+      .split("\n")
+      .filter((item) => item.trim() !== "")
+      .reduce((acc, line) => {
+        const [key, value] = line.split(":").map((part) => part.trim());
+        acc[key] = Number(value) || 0;
+        return acc;
+      }, {});
+
+    const updatedRecipe = {
+      id,
+      title: editForm.title,
+      category: editForm.category,
+      ingredients: editForm.ingredients
+        .split("\n")
+        .filter((item) => item.trim() !== ""),
+      instructions: editForm.instructions
+        .split("\n")
+        .filter((item) => item.trim() !== ""),
+      nutrition: nutritionObj,
+    };
+    onEditRecipe(updatedRecipe);
+    setEditingId(null);
+  };
 
   return (
-    <div className="mt-6">
-      <h2 className="text-lg font-semibold text-gray-700 mb-2">Your Recipes</h2>
-      <input
-        type="text"
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        placeholder="Search recipes..."
-        className="w-full p-2 mb-4 border rounded-md focus:ring-2 focus:ring-[var(--paprika-orange)] focus:border-transparent"
-      />
-      <div className="flex justify-between mb-4">
-        <select
-          value={filterCategory}
-          onChange={(e) => setFilterCategory(e.target.value)}
-          className="w-2/3 p-2 border rounded-md focus:ring-2 focus:ring-[var(--paprika-orange)] focus:border-transparent"
-        >
-          <option value="All">All Categories</option>
-          <option value="Dinner">Dinner</option>
-          <option value="Dessert">Dessert</option>
-          <option value="Breakfast">Breakfast</option>
-          <option value="Snack">Snack</option>
-        </select>
-        <button
-          onClick={() => setViewMode(viewMode === "list" ? "grid" : "list")}
-          className="p-2 bg-[var(--paprika-orange)] text-white rounded-md hover:bg-orange-600 transition-colors"
-        >
-          {viewMode === "list" ? "Grid" : "List"}
-        </button>
-      </div>
-      {filteredRecipes.length === 0 ? (
-        <p className="text-gray-500 italic">
-          No recipes match your search or category.
-        </p>
-      ) : viewMode === "list" ? (
-        <ul className="space-y-2">
-          {filteredRecipes.map((recipe) => (
-            <li
-              key={recipe.id}
-              onClick={() => onSelect(recipe)}
-              className="p-3 bg-[var(--paprika-cream)] rounded-lg shadow-sm hover:bg-[var(--paprika-orange)] hover:text-white cursor-pointer transition-colors flex items-center"
-            >
-              {recipe.image && (
-                <img
-                  src={recipe.image}
-                  alt={recipe.title}
-                  className="w-12 h-12 object-cover rounded-md mr-3"
-                />
-              )}
-              <div>
-                {recipe.title}{" "}
-                <span className="text-sm text-gray-600">
-                  ({recipe.category})
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
+    <div className="space-y-4">
+      <h3 className="text-lg font-semibold text-gray-800 mb-2">Your Recipes</h3>
+      {recipes.length === 0 ? (
+        <p className="text-gray-600">No recipes yet—add one above!</p>
       ) : (
-        <div className="grid grid-cols-2 gap-4">
-          {filteredRecipes.map((recipe) => (
-            <div
-              key={recipe.id}
-              onClick={() => onSelect(recipe)}
-              className="p-3 bg-[var(--paprika-cream)] rounded-lg shadow-sm hover:bg-[var(--paprika-orange)] hover:text-white cursor-pointer transition-colors"
-            >
-              {recipe.image && (
-                <img
-                  src={recipe.image}
-                  alt={recipe.title}
-                  className="w-full h-32 object-cover rounded-md mb-2"
+        recipes.map((recipe) => (
+          <div key={recipe.id} className="bg-white shadow-md rounded-lg p-4">
+            {editingId === recipe.id ? (
+              <form
+                onSubmit={(e) => handleEditSubmit(e, recipe.id)}
+                className="space-y-4"
+              >
+                <input
+                  type="text"
+                  value={editForm.title}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, title: e.target.value })
+                  }
+                  placeholder="Recipe Title"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-400"
                 />
-              )}
-              <p>{recipe.title}</p>
-              <p className="text-sm text-gray-600">{recipe.category}</p>
-            </div>
-          ))}
-        </div>
+                <input
+                  type="text"
+                  value={editForm.category}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, category: e.target.value })
+                  }
+                  placeholder="Category"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-400"
+                />
+                <textarea
+                  value={editForm.ingredients}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, ingredients: e.target.value })
+                  }
+                  placeholder="Ingredients (one per line)"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-400"
+                  rows="4"
+                />
+                <textarea
+                  value={editForm.instructions}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, instructions: e.target.value })
+                  }
+                  placeholder="Instructions (one per line)"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-400"
+                  rows="4"
+                />
+                <textarea
+                  value={editForm.nutrition}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, nutrition: e.target.value })
+                  }
+                  placeholder="Nutrition (one per line)\ncalories: 500\nprotein: 30\nfat: 20\ncarbs: 40"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-400"
+                  rows="4"
+                />
+                <div className="flex space-x-2">
+                  <button
+                    type="submit"
+                    className="flex-1 bg-red-600 text-white py-2 rounded-md hover:bg-red-700 transition"
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingId(null)}
+                    className="flex-1 bg-gray-400 text-white py-2 rounded-md hover:bg-gray-500 transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <h4 className="text-xl font-medium text-gray-800">
+                  {recipe.title}
+                </h4>
+                <p className="text-gray-600 text-sm">{recipe.category}</p>
+                <ul className="text-gray-700 mt-2 list-disc list-inside">
+                  {recipe.ingredients.map((ingredient, index) => (
+                    <li key={index}>{ingredient}</li>
+                  ))}
+                </ul>
+                <ol className="text-gray-700 mt-2 list-decimal list-inside">
+                  {recipe.instructions.map((instruction, index) => (
+                    <li key={index}>{instruction}</li>
+                  ))}
+                </ol>
+                <div className="text-gray-700 mt-2">
+                  <p className="font-medium">Nutrition:</p>
+                  <ul className="list-none">
+                    {Object.entries(recipe.nutrition).map(([key, value]) => (
+                      <li key={key}>
+                        {key}: {value}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="mt-4 flex space-x-2">
+                  <button
+                    onClick={() => startEditing(recipe)}
+                    className="bg-yellow-500 text-white px-4 py-1 rounded-md hover:bg-yellow-600 transition"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => onDeleteRecipe(recipe.id)}
+                    className="bg-red-600 text-white px-4 py-1 rounded-md hover:bg-red-700 transition"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        ))
       )}
     </div>
   );
