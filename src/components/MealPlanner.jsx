@@ -1,38 +1,25 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
-
-const API_URL = "https://recipe-manager-backend-thomas.herokuapp.com";
-const USER_ID = 1; // Hardcoded for demo
 
 const MealPlanner = ({ recipes }) => {
   const [mealPlan, setMealPlan] = useState({});
+  const [userId, setUserId] = useState(""); // Match App’s userId later
 
   useEffect(() => {
-    fetchMealPlan();
-  }, []);
-
-  const fetchMealPlan = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/meal-plan`, {
-        params: { userId: USER_ID },
-      });
-      setMealPlan(response.data);
-    } catch (error) {
-      console.error("Error fetching meal plan:", error);
+    if (userId) {
+      fetchMealPlan();
     }
+  }, [userId]);
+
+  const fetchMealPlan = () => {
+    const storedPlan =
+      JSON.parse(localStorage.getItem(`mealPlan_${userId}`)) || {};
+    setMealPlan(storedPlan);
   };
 
-  const updateMealPlan = async (day, recipeId) => {
-    try {
-      await axios.post(`${API_URL}/meal-plan`, {
-        userId: USER_ID,
-        day,
-        recipeId,
-      });
-      setMealPlan({ ...mealPlan, [day]: recipeId });
-    } catch (error) {
-      console.error("Error updating meal plan:", error);
-    }
+  const updateMealPlan = (day, recipeId) => {
+    const updatedPlan = { ...mealPlan, [day]: recipeId || null };
+    localStorage.setItem(`mealPlan_${userId}`, JSON.stringify(updatedPlan));
+    setMealPlan(updatedPlan);
   };
 
   const days = [
@@ -48,22 +35,35 @@ const MealPlanner = ({ recipes }) => {
   return (
     <div>
       <h2>Meal Planner</h2>
-      {days.map((day) => (
-        <div key={day}>
-          <label>{day}: </label>
-          <select
-            value={mealPlan[day] || ""}
-            onChange={(e) => updateMealPlan(day, e.target.value)}
-          >
-            <option value="">None</option>
-            {recipes.map((recipe) => (
-              <option key={recipe.id} value={recipe.id}>
-                {recipe.title}
-              </option>
-            ))}
-          </select>
-        </div>
-      ))}
+      <div>
+        <label>Enter User ID: </label>
+        <input
+          type="text"
+          value={userId}
+          onChange={(e) => setUserId(e.target.value)}
+          placeholder="e.g., user1"
+        />
+      </div>
+      {userId ? (
+        days.map((day) => (
+          <div key={day}>
+            <label>{day}: </label>
+            <select
+              value={mealPlan[day] || ""}
+              onChange={(e) => updateMealPlan(day, e.target.value)}
+            >
+              <option value="">None</option>
+              {recipes.map((recipe) => (
+                <option key={recipe.id} value={recipe.id}>
+                  {recipe.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        ))
+      ) : (
+        <p>Please enter a User ID to view your meal plan.</p>
+      )}
     </div>
   );
 };

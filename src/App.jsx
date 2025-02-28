@@ -2,46 +2,50 @@ import { useState, useEffect } from "react";
 import "./App.css";
 import RecipeForm from "./components/RecipeForm";
 import RecipeList from "./components/RecipeList";
-import axios from "axios";
-
-const API_URL = "https://recipe-manager-backend-thomas.herokuapp.com"; // Update after deployment
-const USER_ID = 1; // Hardcoded for demo; later, could be dynamic
 
 function App() {
   const [recipes, setRecipes] = useState([]);
+  const [userId, setUserId] = useState(""); // User enters this
 
   useEffect(() => {
-    fetchRecipes();
-  }, []);
-
-  const fetchRecipes = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/recipes`, {
-        params: { userId: USER_ID },
-      });
-      setRecipes(response.data);
-    } catch (error) {
-      console.error("Error fetching recipes:", error);
+    if (userId) {
+      fetchRecipes();
     }
+  }, [userId]);
+
+  const fetchRecipes = () => {
+    const storedRecipes =
+      JSON.parse(localStorage.getItem(`recipes_${userId}`)) || [];
+    setRecipes(storedRecipes);
   };
 
-  const addRecipe = async (recipe) => {
-    try {
-      const response = await axios.post(`${API_URL}/recipes`, {
-        userId: USER_ID,
-        ...recipe,
-      });
-      setRecipes([...recipes, response.data]);
-    } catch (error) {
-      console.error("Error adding recipe:", error);
-    }
+  const addRecipe = (recipe) => {
+    const newRecipe = { id: Date.now(), ...recipe }; // Simple ID using timestamp
+    const updatedRecipes = [...recipes, newRecipe];
+    localStorage.setItem(`recipes_${userId}`, JSON.stringify(updatedRecipes));
+    setRecipes(updatedRecipes);
   };
 
   return (
     <div className="App">
       <h1>Recipe Manager</h1>
-      <RecipeForm onAddRecipe={addRecipe} />
-      <RecipeList recipes={recipes} />
+      <div>
+        <label>Enter User ID: </label>
+        <input
+          type="text"
+          value={userId}
+          onChange={(e) => setUserId(e.target.value)}
+          placeholder="e.g., user1"
+        />
+      </div>
+      {userId ? (
+        <>
+          <RecipeForm onAddRecipe={addRecipe} />
+          <RecipeList recipes={recipes} />
+        </>
+      ) : (
+        <p>Please enter a User ID to start.</p>
+      )}
     </div>
   );
 }
