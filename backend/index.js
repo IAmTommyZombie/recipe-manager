@@ -32,8 +32,13 @@ pool
 pool
   .query(
     `
+  CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL
+  );
   CREATE TABLE IF NOT EXISTS recipes (
     id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
     title VARCHAR(255) NOT NULL,
     category VARCHAR(50),
     ingredients TEXT[],
@@ -43,6 +48,7 @@ pool
   );
   CREATE TABLE IF NOT EXISTS meal_plan (
     day VARCHAR(10) PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
     recipe_id INTEGER REFERENCES recipes(id)
   );
 `
@@ -50,10 +56,6 @@ pool
   .then(() => console.log("Tables created"))
   .catch((err) => console.error("Table creation error:", err));
 
-// Health check
-setInterval(() => console.log("Server still alive"), 10000);
-
-// Root endpoint
 app.get("/", (req, res) => {
   console.log("GET / endpoint hit");
   res.send("Welcome to Recipe Manager Backend");
@@ -65,9 +67,14 @@ app.get("/test", (req, res) => {
 });
 
 app.get("/recipes", async (req, res) => {
-  console.log("GET /recipes endpoint hit");
+  const userId = req.query.userId; // Get userId from query params
+  if (!userId) return res.status(400).send("userId is required");
+  console.log(`GET /recipes endpoint hit for userId: ${userId}`);
   try {
-    const result = await pool.query("SELECT * FROM recipes");
+    const result = await pool.query(
+      "SELECT * FROM recipes WHERE user_id = $1",
+      [userId]
+    );
     console.log("Recipes fetched:", result.rows);
     res.json(result.rows);
   } catch (err) {
@@ -77,13 +84,21 @@ app.get("/recipes", async (req, res) => {
 });
 
 app.post("/recipes", async (req, res) => {
-  console.log("POST /recipes endpoint hit:", req.body);
-  const { title, category, ingredients, instructions, image, nutrition } =
-    req.body;
+  const {
+    userId,
+    title,
+    category,
+    ingredients,
+    instructions,
+    image,
+    nutrition,
+  } = req.body;
+  if (!userId) return res.status(400).send("userId is required");
+  console.log(`POST /recipes endpoint hit for userId: ${userId}`, req.body);
   try {
     const result = await pool.query(
-      "INSERT INTO recipes (title, category, ingredients, instructions, image, nutrition) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
-      [title, category, ingredients, instructions, image, nutrition]
+      "INSERT INTO recipes (user_id, title, category, ingredients, instructions, image, nutrition) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
+      [userId, title, category, ingredients, instructions, image, nutrition]
     );
     console.log("Recipe posted:", result.rows[0]);
     res.json(result.rows[0]);
@@ -94,9 +109,14 @@ app.post("/recipes", async (req, res) => {
 });
 
 app.get("/meal-plan", async (req, res) => {
-  console.log("GET /meal-plan endpoint hit");
+  const userId = req.query.userId;
+  if (!userId) return res.status(400).send("userId is required");
+  console.log(`GET /meal-plan endpoint hit for userId: ${userId}`);
   try {
-    const result = await pool.query("SELECT * FROM meal_plan");
+    const result = await pool.query(
+      "SELECT * FROM meal_plan WHERE user_id = $1",
+      [userId]
+    );
     const mealPlan = result.rows.reduce(
       (acc, { day, recipe_id }) => ({ ...acc, [day]: recipe_id }),
       {}
@@ -110,12 +130,13 @@ app.get("/meal-plan", async (req, res) => {
 });
 
 app.post("/meal-plan", async (req, res) => {
-  console.log("POST /meal-plan endpoint hit:", req.body);
-  const { day, recipeId } = req.body;
+  const { userId, day, recipeId } = req.body;
+  if (!userId) return res.status(400).send("userId is required");
+  console.log(`POST /meal-plan endpoint hit for userId: ${userId}`, req.body);
   try {
     await pool.query(
-      "INSERT INTO meal_plan (day, recipe_id) VALUES ($1, $2) ON CONFLICT (day) DO UPDATE SET recipe_id = $2",
-      [day, recipeId]
+      "INSERT INTO meal_plan (day, user_id, recipe_id) VALUES ($1, $2, $3) ON CONFLICT (day) DO UPDATE SET recipe_id = $3, user_id = $2",
+      [day, userId, recipeId]
     );
     console.log("Meal plan updated for day:", day);
     res.status(200).send("Meal plan updated");
