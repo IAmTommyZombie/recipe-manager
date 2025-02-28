@@ -1,4 +1,3 @@
-// recipe-manager-backend/index.js
 require("dotenv").config();
 const express = require("express");
 const { Pool } = require("pg");
@@ -16,7 +15,6 @@ const pool = new Pool({
   port: process.env.DB_PORT,
 });
 
-// Create tables
 pool
   .query(
     `
@@ -38,7 +36,6 @@ pool
   .then(() => console.log("Tables created"))
   .catch((err) => console.error("Table creation error:", err));
 
-// Recipes Endpoints
 app.get("/recipes", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM recipes");
@@ -64,7 +61,6 @@ app.post("/recipes", async (req, res) => {
   }
 });
 
-// Meal Plan Endpoints
 app.get("/meal-plan", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM meal_plan");
@@ -94,4 +90,7 @@ app.post("/meal-plan", async (req, res) => {
   }
 });
 
-app.listen(3000, () => console.log("Server running on port 3000"));
+const port = process.env.PORT || 3000; // Use Render's PORT or fallback to 3000 locally
+app.listen(port, "0.0.0.0", () =>
+  console.log(`Server running on port ${port}`)
+);
