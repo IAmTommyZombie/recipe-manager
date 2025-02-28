@@ -24,7 +24,6 @@ console.log("Pool created with config:", {
   port: process.env.DB_PORT,
 });
 
-// Test database connection immediately
 pool
   .connect()
   .then(() => console.log("Database connected successfully"))
@@ -51,7 +50,15 @@ pool
   .then(() => console.log("Tables created"))
   .catch((err) => console.error("Table creation error:", err));
 
-// Simple static endpoint
+// Health check
+setInterval(() => console.log("Server still alive"), 10000);
+
+// Root endpoint
+app.get("/", (req, res) => {
+  console.log("GET / endpoint hit");
+  res.send("Welcome to Recipe Manager Backend");
+});
+
 app.get("/test", (req, res) => {
   console.log("GET /test endpoint hit");
   res.send("Backend is alive!");
