@@ -7,6 +7,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+console.log("Starting app...");
+
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
@@ -14,6 +16,19 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
   port: process.env.DB_PORT,
 });
+
+console.log("Pool created with config:", {
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT,
+});
+
+// Test database connection immediately
+pool
+  .connect()
+  .then(() => console.log("Database connected successfully"))
+  .catch((err) => console.error("Initial database connection failed:", err));
 
 pool
   .query(
@@ -36,14 +51,14 @@ pool
   .then(() => console.log("Tables created"))
   .catch((err) => console.error("Table creation error:", err));
 
-// Test endpoint
+// Simple static endpoint
 app.get("/test", (req, res) => {
-  console.log("Test endpoint hit");
+  console.log("GET /test endpoint hit");
   res.send("Backend is alive!");
 });
 
 app.get("/recipes", async (req, res) => {
-  console.log("Fetching recipes...");
+  console.log("GET /recipes endpoint hit");
   try {
     const result = await pool.query("SELECT * FROM recipes");
     console.log("Recipes fetched:", result.rows);
@@ -55,7 +70,7 @@ app.get("/recipes", async (req, res) => {
 });
 
 app.post("/recipes", async (req, res) => {
-  console.log("Posting recipe:", req.body);
+  console.log("POST /recipes endpoint hit:", req.body);
   const { title, category, ingredients, instructions, image, nutrition } =
     req.body;
   try {
@@ -72,7 +87,7 @@ app.post("/recipes", async (req, res) => {
 });
 
 app.get("/meal-plan", async (req, res) => {
-  console.log("Fetching meal plan...");
+  console.log("GET /meal-plan endpoint hit");
   try {
     const result = await pool.query("SELECT * FROM meal_plan");
     const mealPlan = result.rows.reduce(
@@ -88,7 +103,7 @@ app.get("/meal-plan", async (req, res) => {
 });
 
 app.post("/meal-plan", async (req, res) => {
-  console.log("Posting meal plan:", req.body);
+  console.log("POST /meal-plan endpoint hit:", req.body);
   const { day, recipeId } = req.body;
   try {
     await pool.query(
