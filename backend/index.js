@@ -36,17 +36,26 @@ pool
   .then(() => console.log("Tables created"))
   .catch((err) => console.error("Table creation error:", err));
 
+// Test endpoint
+app.get("/test", (req, res) => {
+  console.log("Test endpoint hit");
+  res.send("Backend is alive!");
+});
+
 app.get("/recipes", async (req, res) => {
+  console.log("Fetching recipes...");
   try {
     const result = await pool.query("SELECT * FROM recipes");
+    console.log("Recipes fetched:", result.rows);
     res.json(result.rows);
   } catch (err) {
-    console.error(err);
+    console.error("Error fetching recipes:", err);
     res.status(500).send("Server error");
   }
 });
 
 app.post("/recipes", async (req, res) => {
+  console.log("Posting recipe:", req.body);
   const { title, category, ingredients, instructions, image, nutrition } =
     req.body;
   try {
@@ -54,43 +63,47 @@ app.post("/recipes", async (req, res) => {
       "INSERT INTO recipes (title, category, ingredients, instructions, image, nutrition) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
       [title, category, ingredients, instructions, image, nutrition]
     );
+    console.log("Recipe posted:", result.rows[0]);
     res.json(result.rows[0]);
   } catch (err) {
-    console.error(err);
+    console.error("Error posting recipe:", err);
     res.status(500).send("Server error");
   }
 });
 
 app.get("/meal-plan", async (req, res) => {
+  console.log("Fetching meal plan...");
   try {
     const result = await pool.query("SELECT * FROM meal_plan");
-    res.json(
-      result.rows.reduce(
-        (acc, { day, recipe_id }) => ({ ...acc, [day]: recipe_id }),
-        {}
-      )
+    const mealPlan = result.rows.reduce(
+      (acc, { day, recipe_id }) => ({ ...acc, [day]: recipe_id }),
+      {}
     );
+    console.log("Meal plan fetched:", mealPlan);
+    res.json(mealPlan);
   } catch (err) {
-    console.error(err);
+    console.error("Error fetching meal plan:", err);
     res.status(500).send("Server error");
   }
 });
 
 app.post("/meal-plan", async (req, res) => {
+  console.log("Posting meal plan:", req.body);
   const { day, recipeId } = req.body;
   try {
     await pool.query(
       "INSERT INTO meal_plan (day, recipe_id) VALUES ($1, $2) ON CONFLICT (day) DO UPDATE SET recipe_id = $2",
       [day, recipeId]
     );
+    console.log("Meal plan updated for day:", day);
     res.status(200).send("Meal plan updated");
   } catch (err) {
-    console.error(err);
+    console.error("Error posting meal plan:", err);
     res.status(500).send("Server error");
   }
 });
 
-const port = process.env.PORT || 3000; // Use Render's PORT or fallback to 3000 locally
+const port = process.env.PORT || 3000;
 app.listen(port, "0.0.0.0", () =>
   console.log(`Server running on port ${port}`)
 );
